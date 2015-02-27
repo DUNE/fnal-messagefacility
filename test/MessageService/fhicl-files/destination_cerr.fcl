@@ -1,0 +1,6 @@
+process_name: TestCerrDest
+
+message : {
+   destinations : { log : { type : cerr } }
+}
+

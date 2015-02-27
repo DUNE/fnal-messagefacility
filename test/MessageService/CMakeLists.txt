@@ -4,93 +4,22 @@
 #
 # ======================================================================
 
-# ----------------------------------------------------------------------
-# Identify tests:
+# Get all FHiCL files
+FILE (GLOB testConfigFiles fhicl-files/*.fcl )
 
-set ( TEST_LIST_CC
-      MLexampleModule_1
-      MemoryTestClient_A
-      MemoryTestClient_B
-      MessageLoggerClient
-      PSetTestClient_A
-      ProblemTestClient_t1
-      UnitTestClient_A
-      UnitTestClient_B
-      UnitTestClient_C
-      UnitTestClient_D
-      UnitTestClient_E
-      UnitTestClient_F
-      UnitTestClient_G
-      UnitTestClient_H
-      UnitTestClient_I
-      UnitTestClient_J
-      UnitTestClient_K
-      UnitTestClient_L
-      UnitTestClient_M
-      UnitTestClient_N
-      UnitTestClient_O
-      UnitTestClient_P
-      UnitTestClient_Q
-      UnitTestClient_R
-      UnitTestClient_S
-      UnitTestClient_SLumi
-      UnitTestClient_T
-      UnitTestClient_V
-      makeSignals
+# Exclude the following *.fcl files
+# LIST ( REMOVE_ITEM testConfigFiles )
+
+cet_test_env(CLEAR "FHICL_FILE_PATH=${CMAKE_CURRENT_SOURCE_DIR}")
+
+foreach ( filename ${testConfigFiles} )
+
+  # trim directory prefixes and .fcl suffix
+  string( REGEX REPLACE "(.*/fhicl-files/)(.*)(.fcl)" "\\2" testname ${filename} )
+
+  cet_test( messagefacility_${testname}_t HANDBUILT
+    TEST_EXEC ELdestinationTester
+    TEST_ARGS ${filename}
     )
 
-set ( TEST_LIST_CPP
-      makeJobReport
-      standAloneTest
-      testLoggerInCmsRun
-      trivial_main
-      u1
-      unitTestsGroup_1
-      unitTestsGroup_2
-      unitTestsGroup_3
-      unitTestsGroup_4
-      unitTestsGroup_5
-      unitTestsGroup_6
-      unitTestsLimits
-      unitTestsMultithread_1
-      unitTestsMultithread_2
-      unitTestsMultithread_3
-      unitTestsStandAlone
-      unitTestsStatistics
-    )
-
-set ( ALSO_BUILD_CC )
-
-set ( ALSO_BUILD_CPP )
-
-set ( ALSO_RUN )
-
-link_libraries( MessageService )
-
-# ----------------------------------------------------------------------
-# Build most tests:
-
-foreach ( test ${TEST_LIST_CPP} ${ALSO_BUILD_CPP} )
-  add_executable ( ${test} ${test}.cpp )
-endforeach ( test ${TEST_LIST_CPP} ${ALSO_BUILD_CPP} )
-
-foreach ( test ${TEST_LIST_CC} ${ALSO_BUILD_CC} )
-  add_executable ( ${test} ${test}.cc )
-endforeach ( test ${TEST_LIST_CC} ${ALSO_BUILD_CC} )
-
-# ----------------------------------------------------------------------
-# Build tests with special requirements:
-
-#add_executable( sha1_test_performance sha1_test_performance.cc sha1.cpp )
-#target_link_libraries( sha1_test_performance cetlib )
-
-# ----------------------------------------------------------------------
-# Run tests:
-
-foreach ( test ${TEST_LIST} ${ALSO_RUN} )
-  add_test ( ${test} ${EXECUTABLE_OUTPUT_PATH}/${test} )
-endforeach ( test ${TEST_LIST} )
-
-# Non-standard tests:
-
-# ======================================================================
+endforeach()

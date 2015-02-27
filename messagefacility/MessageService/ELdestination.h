@@ -10,178 +10,158 @@
 //                 a list of ELdestination* as well as the objects those
 //                 list elements point to.
 //
-// 7/5/98 mf    Created file.
-// 6/16/99 jvr  Allows suppress/include options on destinations
-// 7/1/99 mf    Forward-declared ELdestControl for strict C++ (thanks cg).
-// 7/2/99  jvr  Added separate/attachTime, Epilogue, and Serial options
-// 12/20/99 mf  Added virtual destructor.
-// 6/7/00  web  Consolidated ELdestination/X; add filterModule()
-// 6/14/00 web  Declare classes before granting friendship.
-// 10/4/00 mf   Add excludeModule
-// 1/15/01 mf   setLineLength()
-// 2/13/01 mf   fix written by pc to accomodate NT problem with
-//              static init { $001$ }.  Corresponding fix is in .cc file.
-// 3/13/01 mf   statisticsMap()
-// 04/04/01 mf  add ignoreMOdule and respondToModule
-// 6/23/03 mf   changeFile() and flush()
-// 1/10/06 mf   finish
-// 6/19/08 mf   summaryForJobReport()
-//
 // ----------------------------------------------------------------------
 
-#include "messagefacility/MessageService/ELlimitsTable.h"
 #include "messagefacility/MessageService/ELset.h"
+#include "messagefacility/MessageService/MsgFormatSettings.h"
+#include "messagefacility/MessageService/MsgStatistics.h"
 
 #include "messagefacility/MessageLogger/ELstring.h"
 #include "messagefacility/MessageLogger/ErrorObj.h"
 #include "messagefacility/MessageLogger/ELextendedID.h"
 
+#include "cetlib/PluginTypeDeducer.h"
 #include "fhiclcpp/ParameterSet.h"
 
 namespace mf {
-namespace service {
 
-// ----------------------------------------------------------------------
-// prerequisite classes:
-// ----------------------------------------------------------------------
+  namespace service {
+    class ELdestination;
 
-class ELdestControl;
-class ELadministrator;
+    // ----------------------------------------------------------------------
+    // prerequisite classes:
+    // ----------------------------------------------------------------------
 
-
-// ----------------------------------------------------------------------
-// ELdestination:
-// ----------------------------------------------------------------------
-
-
-class ELdestination  {
-
-  friend class ELadministrator;
-  friend class ELdestControl;
-
-public:
-
-  ELdestination();
-  virtual ~ELdestination();
-
-  // -----  Methods invoked by the ELadministrator:
-  //
-public:
-  virtual ELdestination * clone() const = 0;
-  virtual bool log( const mf::ErrorObj & msg );
-
-  virtual void summarization(
-                const mf::ELstring & title,
-                const mf::ELstring & sumLines );
-
-  virtual ELstring getNewline() const;
-
-  virtual bool switchChannel( const mf::ELstring & channelName );
-
-  virtual void finish();
-
-  // -----  Methods invoked through the ELdestControl handle:
-  //
-protected:
-  virtual void clearSummary();
-  virtual void wipe();
-  virtual void zero();
-  virtual void filterModule( ELstring const & moduleName );
-  virtual void excludeModule( ELstring const & moduleName );
-  virtual void ignoreModule( ELstring const & moduleName );
-  virtual void respondToModule( ELstring const & moduleName );
-  virtual bool thisShouldBeIgnored(const ELstring & s) const;
-
-  virtual void summary( ELdestControl & dest, const ELstring & title="" );
-  virtual void summary( std::ostream  & os  , const ELstring & title="" );
-  virtual void summary( ELstring      & s   , const ELstring & title="" );
-  virtual void summary( );
-  virtual void summaryForJobReport(std::map<std::string, double> & sm);
-
-  virtual void setTableLimit( int n );
-
-  virtual std::map<ELextendedID,StatsCount> statisticsMap() const;
-
-  virtual void changeFile (std::ostream & os);
-  virtual void changeFile (const ELstring & filename);
-  virtual void flush();
-
-  // -----  Select output format options:
-  //
-private:
-  virtual void suppressText();           virtual void includeText(); // $$ jvr
-  virtual void suppressModule();         virtual void includeModule();
-  virtual void suppressSubroutine();     virtual void includeSubroutine();
-  virtual void suppressTime();           virtual void includeTime();
-  virtual void suppressMillisecond();    virtual void includeMillisecond();
-  virtual void suppressContext();        virtual void includeContext();
-  virtual void suppressSerial();         virtual void includeSerial();
-  virtual void useFullContext();         virtual void useContext();
-  virtual void separateTime();           virtual void attachTime();
-  virtual void separateEpilogue();       virtual void attachEpilogue();
-  virtual void noTerminationSummary();
-  virtual int  setLineLength(int len);   virtual int  getLineLength() const;
-
-  // -----  Data affected by methods of the ELdestControl handle:
-  //
-protected:
-  ELseverityLevel threshold;
-  ELseverityLevel traceThreshold;
-  ELlimitsTable   limits;
-  ELstring        preamble;
-  ELstring        newline;
-  ELstring        indent;
-  int             lineLength;
-  bool            ignoreMostModules;
-  ELset_string    respondToThese;
-  bool            respondToMostModules;
-  ELset_string    ignoreThese;
-                                        // Fix $001 2/13/01 mf
-#ifndef DEFECT_NO_STATIC_CONST_INIT
-  static const int defaultLineLength = 80;
-#else
-  static const int defaultLineLength;
-#endif
-
-  // -----  Verboten methods:
-  //
-private:
-  ELdestination( const ELdestination & orig );
-  ELdestination& operator= ( const ELdestination & orig );
-
-};  // ELdestination
-
-struct close_and_delete {
-  void operator()(std::ostream* os) const;
-};
-
-// Destination factory for loading destinations dynamically
-struct ELdestinationFactory
-{
-  typedef std::map<std::string, ELdestination*(*)(std::string const &, fhicl::ParameterSet const &)> map_type;
-
-public:
-  static void reg( std::string type_str,
-      ELdestination* (*f)(std::string const &, fhicl::ParameterSet const &));
-
-  static ELdestination * createInstance ( std::string const & type,
-      std::string const & name,
-      fhicl::ParameterSet const & pset );
-
-private:
-  ELdestinationFactory() {};
-
-  static map_type * getMap()
-  {
-    if(!map) map = new map_type;
-    return map;
+    class ELdestControl;
+    class ELadministrator;
   }
+}
 
-  static map_type * map;
-};
+namespace cet {
+  template <> struct PluginTypeDeducer<mf::service::ELdestination> {
+    static std::string const value;
+  };
+}
 
-}        // end of namespace service
-}        // end of namespace mf
+namespace mf {
+  namespace service {
+
+    // ----------------------------------------------------------------------
+    // ELdestination:
+    // ----------------------------------------------------------------------
+
+    class ELdestination  {
+
+      friend class ELadministrator;
+      friend class ELdestControl;
+
+    public:
+
+      ELdestination(const fhicl::ParameterSet& pset);
+
+      ELdestination() : ELdestination( fhicl::ParameterSet() ) {}
+
+      virtual ~ELdestination(){}
+
+      // -----  Methods invoked by the ELadministrator:
+      //
+    public:
+      virtual void log( mf::ErrorObj & msg );
+
+      virtual void summarization(
+                                 const mf::ELstring & title,
+                                 const mf::ELstring & sumLines );
+
+
+      virtual ELstring getNewline() const;
+
+      virtual bool switchChannel( const mf::ELstring & channelName );
+
+      virtual void finish();
+
+      // -----  Methods invoked through the ELdestControl handle:
+      //
+    protected:
+
+      void emit( std::ostream& os, const ELstring & s, const bool nl = false );
+
+      bool passLogMsgThreshold  (const mf::ErrorObj& msg);
+      bool passLogStatsThreshold(const mf::ErrorObj& msg) const;
+
+      virtual void fillPrefix(std::ostringstream& oss, const mf::ErrorObj& msg);
+      virtual void fillUsrMsg(std::ostringstream& oss, const mf::ErrorObj& msg);
+      virtual void fillSuffix(std::ostringstream& oss, const mf::ErrorObj& msg);
+
+      virtual void routePayload(const std::ostringstream& oss, const mf::ErrorObj& msg);
+
+      virtual void clearSummary();
+      virtual void wipe();
+      virtual void zero();
+      virtual void filterModule( ELstring const & moduleName );
+      virtual void excludeModule( ELstring const & moduleName );
+      virtual void ignoreModule( ELstring const & moduleName );
+      virtual void respondToModule( ELstring const & moduleName );
+      virtual bool thisShouldBeIgnored(const ELstring & s) const;
+
+      virtual void summary( std::ostream  & os  , const ELstring & title="" );
+      virtual void summary( ELstring      & s   , const ELstring & title="" );
+      virtual void summary( );
+      virtual void summaryForJobReport(std::map<std::string, double> & sm);
+
+      virtual void setTableLimit( int n );
+
+      virtual std::map<ELextendedID,StatsCount> statisticsMap() const;
+
+      virtual void changeFile (std::ostream & os);
+      virtual void changeFile (const ELstring & filename);
+      virtual void flush();
+
+      // -----  Select output format options:
+      //
+    private:
+
+      virtual void noTerminationSummary(){}
+      virtual int  getLineLength() const;
+      virtual int  setLineLength(int len);
+
+      // -----  Data affected by methods of the ELdestControl handle:
+      //
+    protected:
+
+      MsgStatistics     stats;
+      MsgFormatSettings format;
+
+      ELseverityLevel threshold;
+      ELstring        preamble;
+      ELstring        newline;
+      ELstring        indent;
+      std::size_t     lineLength;
+      std::size_t     charsOnLine;
+      bool            ignoreMostModules;
+      ELset_string    respondToThese;
+      bool            respondToMostModules;
+      ELset_string    ignoreThese;
+
+      bool userWantsStats;
+
+      // -----  Verboten methods:
+      //
+    private:
+      ELdestination            ( const ELdestination & orig ) = delete;
+      ELdestination& operator= ( const ELdestination & orig ) = delete;
+
+    };  // ELdestination
+
+    struct close_and_delete {
+      void operator()(std::ostream* os) const;
+    };
+
+  } // end of namespace service
+}   // end of namespace mf
 
 
 #endif  // FWCore_MessageService_ELdestination_h
+
+// Local variables:
+// mode: c++
+// End:

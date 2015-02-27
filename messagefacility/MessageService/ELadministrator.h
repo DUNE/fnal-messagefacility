@@ -46,6 +46,7 @@
 //              and getELdestControl() method
 // 3/17/04 mf   exitThreshold and setExitThreshold
 // 1/10/06 mf   finish
+// 9/25/14 kjk  Disable copy/move
 //
 // ----------------------------------------------------------------------
 
@@ -56,7 +57,11 @@
 #include "messagefacility/MessageLogger/ELseverityLevel.h"
 #include "messagefacility/MessageLogger/ErrorObj.h"
 
+#include "cetlib/exempt_ptr.h"
+
 #include <memory>
+#include <type_traits>
+#include <utility>
 
 namespace mf {
 namespace service {
@@ -67,7 +72,7 @@ namespace service {
 // ----------------------------------------------------------------------
 
 class ELcontextSupplier;
-class ELdestination;
+  //class ELdestination;
 class ELadminDestroyer;
 class ErrorLog;
 class ELtsErrorLog;
@@ -93,6 +98,13 @@ public:
   //
   static ELadministrator * instance();          // *** Singleton Pattern
 
+  // ---  disable copy/move:
+  //
+  ELadministrator ( const ELadministrator&  ) = delete;
+  ELadministrator (       ELadministrator&& ) = delete;
+  ELadministrator& operator = ( const ELadministrator&  ) = delete;
+  ELadministrator& operator = (       ELadministrator&& ) = delete;
+
   // ---  get/set fundamental properties:
   //
   void setProcess( const ELstring & process );
@@ -106,8 +118,18 @@ public:
 
   // ---  furnish/recall destinations:
   //
-  ELdestControl attach( const ELdestination & sink );
-  ELdestControl attach( const ELdestination & sink, const ELstring & name );
+
+  template <typename DEST>
+  ELdestControl attach( const std::string& outputId,
+                        std::unique_ptr<DEST>&& dest,
+                        typename std::enable_if<std::is_base_of<ELdestination,DEST>::value>::type* = 0 ) {
+    auto emplacePair = attachedDestinations.emplace( outputId, std::move(dest) );
+    auto iterToIDdestPair = emplacePair.first;
+    const bool didEmplace = emplacePair.second;
+    return didEmplace ? ELdestControl( cet::exempt_ptr<ELdestination>( iterToIDdestPair->second.get() ) ) : ELdestControl();
+  }
+
+  const std::map<std::string,std::unique_ptr<ELdestination>> & sinks();
   bool getELdestControl ( const ELstring & name, ELdestControl & theControl );
 
   // ---  handle severity information:
@@ -142,7 +164,6 @@ protected:
   ELcontextSupplier           & context() const;
   const ELseverityLevel       & abortThreshold() const;
   const ELseverityLevel       &  exitThreshold() const;
-  std::list<std::shared_ptr<ELdestination> >  & sinks();
   const ELseverityLevel       & highSeverity() const;
   int                           severityCounts( int lev ) const;
 
@@ -175,7 +196,7 @@ private:
   std::shared_ptr<ELcontextSupplier> context_;
   ELseverityLevel            abortThreshold_;
   ELseverityLevel            exitThreshold_;
-  std::list<std::shared_ptr<ELdestination> > sinks_;
+  std::list<std::unique_ptr<ELdestination> > sinks_;
   ELseverityLevel            highSeverity_;
   int                        severityCounts_[ ELseverityLevel::nLevels ];
   mf::ErrorObj               msg;
@@ -186,7 +207,7 @@ private:
   ELstring                   application_;
   long                       pid_;
 
-  std::map < ELstring, std::shared_ptr<ELdestination> > attachedDestinations;
+  std::map <std::string,std::unique_ptr<ELdestination>> attachedDestinations;
 
 };  // ELadministrator
 
@@ -223,3 +244,7 @@ private:
 
 
 #endif  // MessageService_ELadministrator_h
+
+// Local Variables:
+// mode: c++
+// End:

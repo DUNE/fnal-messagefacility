@@ -1,0 +1,10 @@
+process_name: TestFileDest
+
+message : {
+   destinations : { 
+      log : { 
+         type : syslog
+      } 
+   }
+}
+

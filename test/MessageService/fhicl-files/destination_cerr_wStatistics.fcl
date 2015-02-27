@@ -1,0 +1,11 @@
+process_name: TestCerr_wStatisticsDest
+
+message : {
+   destinations : { 
+      log : { 
+         type             : cerr 
+         outputStatistics : true
+      } 
+   }
+}
+

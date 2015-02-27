@@ -7,48 +7,65 @@
 //
 // ======================================================================
 
+#include <memory>
+#include <ostream>
+#include <string>
+
 #ifndef __GCCXML__
 #include <mutex>
 #endif
-#include "cpp0x/memory"
-#include "cpp0x/string"
-#include "fhiclcpp/ParameterSet.h"
+
 #include "messagefacility/MessageLogger/ELseverityLevel.h"
-#include "messagefacility/MessageLogger/ErrorObj.h"
 #include "messagefacility/MessageLogger/MessageDrop.h"
-#include "messagefacility/MessageLogger/MessageLoggerQ.h"
 #include "messagefacility/MessageLogger/MessageSender.h"
 #include "messagefacility/MessageService/MessageLogger.h"
 #include "messagefacility/MessageService/Presence.h"
-#include "messagefacility/Utilities/exception.h"
-#include <ostream>
+
+#include "fhiclcpp/ParameterSet.h"
 
 namespace mf  {
 
-  class MaybeLogger_;
-  class CopyableLogger_;
-  class NeverLogger_;
+  //==============================================================
+  // helpers
+  namespace detail {
 
-  class LogAbsolute;
-  class LogDebug;
-  class LogError;
-  class LogImportant;
-  class LogInfo;
-  class LogPrint;
-  class LogProblem;
-  class LogSystem;
-  class LogTrace;
-  class LogVerbatim;
-  class LogWarning;
+    constexpr int ELsev_warning = ELseverityLevel::ELsev_warning;
+    constexpr int ELsev_info    = ELseverityLevel::ELsev_info;
+    constexpr int ELsev_success = ELseverityLevel::ELsev_success;
+
+    template <int SEV>
+    inline bool enabled() {
+      return true;
+    }
+
+    template<> inline bool enabled<ELsev_warning>() {
+      return MessageDrop::instance()->warningEnabled;
+    }
+    template<> inline bool enabled<ELsev_info>() {
+      return MessageDrop::instance()->infoEnabled;
+    }
+    template<> inline bool enabled<ELsev_success>() {
+      return MessageDrop::instance()->debugEnabled;
+    }
+
+    inline std::string stripLeadingDirectoryTree( std::string const & file )
+    {
+      const std::size_t lastSlash = file.find_last_of('/');
+      if (lastSlash == std::string::npos) return file;
+      if (lastSlash == file.size()-1)     return file;
+      return file.substr(lastSlash+1, file.size()-lastSlash-1);
+    }
+
+  }
+  //==============================================================
 
   class MFSdestroyer;
   class MessageFacilityService;
 
   void LogStatistics( );
-  void LogErrorObj(ErrorObj * eo_p);
 
-  extern LogDebug dummyLogDebugObject_;
-  extern LogTrace dummyLogTraceObject_;
+  class ErrorObj;
+  void LogErrorObj(ErrorObj * eo_p);
 
   bool isDebugEnabled( );
   bool isInfoEnabled( );
@@ -71,157 +88,103 @@ namespace mf  {
 
 }  // mf
 
-// ======================================================================
 
-// N.B.:
-// - a C++11 std::unique_ptr is not copyable, so the containing class
-//   is implicitly not copyable
-// - C++03 code uses std::auto_ptr as a workaround for std::unique_ptr,
-//   so we mark the containing class as explicitly noncopyable
+//=======================================================================
+namespace mf {
 
-class mf::MaybeLogger_
-#if __cplusplus < 201103L
-  : public boost::noncopyable
-#endif
-{
-private:
-  // data:
-#if __cplusplus >= 201103L
-  std::unique_ptr<MessageSender> ap;
-#else
-  std::auto_ptr<MessageSender> ap;
-#endif
+  template < int SEV, bool VERB, bool PREFIX, bool CONDITIONAL >
+  class MaybeLogger_ {
 
-protected:
-  // c'tor:
-  explicit  MaybeLogger_( MessageSender * );
+    std::unique_ptr<MessageSender> msgSender_p;
 
-public:
-  // streamers:
-  template< class T >
-  MaybeLogger_ &  operator << ( T const & );
+  public:
 
-  MaybeLogger_ &  operator << ( std::ostream&(*)(std::ostream&) );
-  MaybeLogger_ &  operator << ( std::ios_base&(*)(std::ios_base&) );
+    MaybeLogger_ (){}
+    MaybeLogger_ ( const std::string& id, const std::string& file = "--", int line = 0 ) :
+      msgSender_p ( detail::enabled<SEV>() ?
+                    new MessageSender( ELseverityLevel::ELsev_(SEV), id, VERB ):
+                    nullptr )
+    {
+      if ( PREFIX ) {
+        *this << " "
+              << detail::stripLeadingDirectoryTree(file)
+              << ":"
+              << line;
+      }
+    }
 
-};  // MaybeLogger_
+    MaybeLogger_             ( MaybeLogger_ && )      = default;
 
-template< class T >
-mf::MaybeLogger_ &
-  mf::MaybeLogger_::
-  operator << ( T const & t )
-{
-  if( ap.get() )
-    *ap << t;
-  return *this;
-}
+    // Disable copy c'tor and copy/move assignment
+    MaybeLogger_             ( MaybeLogger_ const & ) = delete;
+    MaybeLogger_&  operator= ( MaybeLogger_ const & ) = delete;
+    MaybeLogger_&  operator= ( MaybeLogger_ && )      = delete;
 
-// ----------------------------------------------------------------------
+    template< class T >
+    decltype(auto) operator << ( T const & t )
+    {
+      if ( !CONDITIONAL || msgSender_p.get() ) *msgSender_p << t;
+      return std::forward<MaybeLogger_>(*this);
+    }
 
-class mf::CopyableLogger_
-{
-private:
-  // data:
-#if __cplusplus >= 201103L
-  std::unique_ptr<MessageSender> ap;
-#else
-  std::auto_ptr<MessageSender> ap;
-#endif
+    decltype(auto) operator << ( std::ostream&(*f)(std::ostream&) )
+    {
+      if ( !CONDITIONAL || msgSender_p.get() ) *msgSender_p << f;
+      return std::forward<MaybeLogger_>(*this);
+    }
 
-  // no copy assignment
-  void  operator = ( CopyableLogger_ const & );
+    decltype(auto) operator << ( std::ios_base&(*f)(std::ios_base&) )
+    {
+      if ( !CONDITIONAL || msgSender_p.get() ) *msgSender_p << f;
+      return std::forward<MaybeLogger_>(*this);
+    }
 
-protected:
-  // c'tor:
-  explicit  CopyableLogger_( MessageSender * );
+  };
 
-public:
-  // copy c'tor:
-  CopyableLogger_( CopyableLogger_ const & ) : ap( )  { }
+  //=======================================================================================
+  class NeverLogger_ {
+  public:
 
-  // streamers:
-  template< class T >
-  CopyableLogger_ &  operator << ( T const & );
+    // streamers:
+    template< class T >
+    NeverLogger_ &  operator << ( T const & ){ return *this; }
 
-  CopyableLogger_ &  operator << ( std::ostream&(*)(std::ostream&) );
-  CopyableLogger_ &  operator << ( std::ios_base&(*)(std::ios_base&) );
+    NeverLogger_ &  operator << ( std::ostream& (*)(std::ostream& ) ) { return *this; }
+    NeverLogger_ &  operator << ( std::ios_base&(*)(std::ios_base&) ) { return *this; }
 
-};  // CopyableLogger_
+  };
 
-template< class T >
-mf::CopyableLogger_ &
-  mf::CopyableLogger_::
-  operator << ( T const & t )
-{
-  if( ap.get() )
-    *ap << t;
-  else {
-    Exception e(mf::errors::LogicError);
-    e << "streaming to stale (copied) CopyableLogger_ object";
-    throw e;
+  //=======================================================================================
+  //  Specific type aliases for users
+
+  namespace detail {
+    constexpr bool AlwaysLogger      = false;
+    constexpr bool ConditionalLogger = true;
   }
-  return *this;
+
+  // Statements follow pattern:
+  //    using LogXXX = MaybeLogger_< ELseverityLevel::ELsev_ , verbatim, prefix, conditional construction >;
+
+  using LogError     = MaybeLogger_< ELseverityLevel::ELsev_error  , false, true , detail::AlwaysLogger>;
+  using LogProblem   = MaybeLogger_< ELseverityLevel::ELsev_error  , true , false, detail::AlwaysLogger>;
+  using LogImportant = MaybeLogger_< ELseverityLevel::ELsev_error  , true , false, detail::AlwaysLogger>;
+  using LogSystem    = MaybeLogger_< ELseverityLevel::ELsev_severe , false, false, detail::AlwaysLogger>;
+  using LogAbsolute  = MaybeLogger_< ELseverityLevel::ELsev_severe , true , false, detail::AlwaysLogger>;
+
+  using LogDebug     = MaybeLogger_< ELseverityLevel::ELsev_success, false, true , detail::ConditionalLogger>;
+  using LogTrace     = MaybeLogger_< ELseverityLevel::ELsev_success, true , false, detail::ConditionalLogger>;
+  using LogInfo      = MaybeLogger_< ELseverityLevel::ELsev_info,    false, true , detail::ConditionalLogger>;
+  using LogVerbatim  = MaybeLogger_< ELseverityLevel::ELsev_info,    true , false, detail::ConditionalLogger>;
+  using LogWarning   = MaybeLogger_< ELseverityLevel::ELsev_warning, false, true , detail::ConditionalLogger>;
+  using LogPrint     = MaybeLogger_< ELseverityLevel::ELsev_warning, true , false, detail::ConditionalLogger>;
+
+  extern LogDebug dummyLogDebugObject_;
+  extern LogTrace dummyLogTraceObject_;
+
 }
 
-// ----------------------------------------------------------------------
-
-class mf::NeverLogger_
-{
-public:
-  // c'tor:
-   NeverLogger_( )  { }
-
-#if __cplusplus >= 201103L
-  // Need these because we're relying on the behavior of the ternary
-  // operator.
-  NeverLogger_               ( NeverLogger_ const & ) = default;
-  NeverLogger_ &  operator = ( NeverLogger_ const & ) = default;
-
-  NeverLogger_               ( NeverLogger_      && ) = default;
-  NeverLogger_ &  operator = ( NeverLogger_      && ) = default;
-
-  // use compiler-generated d'tor
-#else
-  // use compiler-generated copy c'tor, copy assignment, and d'tor
-#endif
-
-  // streamers:
-  template< class T >
-  NeverLogger_ &  operator << ( T const & )
-  { return *this; }
-
-  NeverLogger_ &  operator << ( std::ostream&(*)(std::ostream&) )
-  { return *this; }
-
-  NeverLogger_ &  operator << ( std::ios_base&(*)(std::ios_base&) )
-  { return *this; }
-
-};  // NeverLogger_
-
-// ----------------------------------------------------------------------
-
-#define DEFINE_LOGGER(Name,Base)  \
-class mf::Name : public Base {  \
-public:  \
-  explicit Name( std::string const & id );  \
-  Name( std::string const & id, std::string const & file, int line );  \
-};
-
-DEFINE_LOGGER(LogAbsolute,MaybeLogger_) // verbatim version of LogSystem
-DEFINE_LOGGER(LogDebug,CopyableLogger_)
-DEFINE_LOGGER(LogError,MaybeLogger_)
-DEFINE_LOGGER(LogImportant,MaybeLogger_)  // less judgmental verbatim version of LogError
-DEFINE_LOGGER(LogInfo,MaybeLogger_)
-DEFINE_LOGGER(LogPrint,MaybeLogger_) // verbatim version of LogWarning
-DEFINE_LOGGER(LogProblem,MaybeLogger_) // verbatim version of LogError
-DEFINE_LOGGER(LogSystem,MaybeLogger_)
-DEFINE_LOGGER(LogTrace,CopyableLogger_)
-DEFINE_LOGGER(LogVerbatim,MaybeLogger_)  // verbatim version of LogInfo
-DEFINE_LOGGER(LogWarning,MaybeLogger_)
-
-#undef DEFINE_LOGGER
-
-// ----------------------------------------------------------------------
+//=======================================================================================
+//  Macros for including file/line information
 
 #define LOG_ABSOLUTE(id)  ::mf::LogAbsolute(id, __FILE__, __LINE__)
 #define LOG_ERROR(id)     ::mf::LogError(id, __FILE__, __LINE__)
@@ -237,30 +200,26 @@ DEFINE_LOGGER(LogWarning,MaybeLogger_)
 // Otherwise, LogDebug is suppressed if either ML_NDEBUG or NDEBUG is defined.
 #undef EDM_MESSAGELOGGER_SUPPRESS_LOGDEBUG
 #if defined(NDEBUG) || defined(ML_NDEBUG)
-  #define EDM_MESSAGELOGGER_SUPPRESS_LOGDEBUG
+#define EDM_MESSAGELOGGER_SUPPRESS_LOGDEBUG
 #endif
 #if defined(ML_DEBUG)
-  #undef EDM_MESSAGELOGGER_SUPPRESS_LOGDEBUG
+#undef EDM_MESSAGELOGGER_SUPPRESS_LOGDEBUG
 #endif
 
 // N.B.: no surrounding ()'s in the conditional expressions below!
 #ifdef EDM_MESSAGELOGGER_SUPPRESS_LOGDEBUG
-  #define LOG_DEBUG(id) true ? ::mf::NeverLogger_() : ::mf::NeverLogger_()
-  #define LOG_TRACE(id) true ? ::mf::NeverLogger_() : ::mf::NeverLogger_()
+#define LOG_DEBUG(id) true ? ::mf::NeverLogger_() : ::mf::NeverLogger_()
+#define LOG_TRACE(id) true ? ::mf::NeverLogger_() : ::mf::NeverLogger_()
 #else
-  #define LOG_DEBUG(id)   ! ::mf::MessageDrop::instance()->debugEnabled \
-                        ? ::mf::LogDebug(id, __FILE__, __LINE__) \
-                        : ::mf::LogDebug(id, __FILE__, __LINE__)
-  #define LOG_TRACE(id)   ! ::mf::MessageDrop::instance()->debugEnabled \
-                        ? ::mf::LogTrace(id, __FILE__, __LINE__) \
-                        : ::mf::LogTrace(id, __FILE__, __LINE__)
+#define LOG_DEBUG(id) !mf::MessageDrop::instance()->debugEnabled ? mf::LogDebug() : mf::LogDebug(id, __FILE__, __LINE__)
+#define LOG_TRACE(id) !mf::MessageDrop::instance()->debugEnabled ? mf::LogTrace() : mf::LogTrace(id, __FILE__, __LINE__)
 #endif
 #undef EDM_MESSAGELOGGER_SUPPRESS_LOGDEBUG
 
-// ----------------------------------------------------------------------
 
-class mf::MessageFacilityService
-{
+//=======================================================================================
+
+class mf::MessageFacilityService {
 private:
   MessageFacilityService( );
 
@@ -268,38 +227,30 @@ public:
   static MessageFacilityService & instance( );
 
   static fhicl::ParameterSet logConsole( );
-  static fhicl::ParameterSet logServer(
-                          int partition = 0
-                        );
-  static fhicl::ParameterSet logFile(
-                          std::string const & filename = "logfile"
-                        , bool append = false
-                        );
-  static fhicl::ParameterSet logCS(
-                          int partition = 0
-                        );
-  static fhicl::ParameterSet logCF(
-                          std::string const & filename = "logfile"
-                        , bool append = false
-                        );
-  static fhicl::ParameterSet logFS(
-                          std::string const & filename = "logfile"
-                        , bool append = false
-                        , int partition = 0
-                        );
-  static fhicl::ParameterSet logCFS(
-                          std::string const & filename = "logfile"
-                        , bool append = false
-                        , int partition = 0
-                        );
-  static fhicl::ParameterSet logArchive(
-                          std::string const & filename = "msgarchive"
-                        , bool append = false
-                        );
 
-  static fhicl::ParameterSet ConfigurationFile(
-               std::string const & filename = "MessageFacility.cfg",
-               fhicl::ParameterSet const & def = logCF());
+  static fhicl::ParameterSet logServer( int partition = 0 );
+
+  static fhicl::ParameterSet logFile( std::string const & filename = "logfile",
+                                      bool append = false );
+
+  static fhicl::ParameterSet logCS( int partition = 0 );
+
+  static fhicl::ParameterSet logCF( std::string const & filename = "logfile",
+                                    bool append = false );
+
+  static fhicl::ParameterSet logFS( std::string const & filename = "logfile",
+                                    bool append = false,
+                                    int partition = 0 );
+
+  static fhicl::ParameterSet logCFS( std::string const & filename = "logfile",
+                                     bool append = false,
+                                     int partition = 0 );
+
+  static fhicl::ParameterSet logArchive( std::string const & filename = "msgarchive",
+                                         bool append = false );
+
+  static fhicl::ParameterSet ConfigurationFile( std::string const & filename = "MessageFacility.cfg",
+                                                fhicl::ParameterSet const & def = logCF() );
 
   static std::string SingleThread;
   static std::string MultiThread;
@@ -329,8 +280,8 @@ public:
 namespace mf {
 
   void StartMessageFacility(
-      std::string const & mode,
-      fhicl::ParameterSet const & pset = MessageFacilityService::ConfigurationFile());
+                            std::string const & mode,
+                            fhicl::ParameterSet const & pset = MessageFacilityService::ConfigurationFile());
 
 }
 

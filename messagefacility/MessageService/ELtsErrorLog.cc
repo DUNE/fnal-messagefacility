@@ -15,7 +15,7 @@
 
 #include "messagefacility/MessageService/ELtsErrorLog.h"
 #include "messagefacility/MessageService/ELadministrator.h"
-#include "messagefacility/MessageService/ELoutput.h"
+#include "messagefacility/MessageService/ELostreamOutput.h"
 #include "messagefacility/MessageService/ELcontextSupplier.h"
 
 #include "messagefacility/Utilities/exception.h"
@@ -320,17 +320,16 @@ void ELtsErrorLog::dispatch ( mf::ErrorObj & msg )  {
 
   // -----  send the message to each destination:
   //
-  if (a->sinks().begin() == a->sinks().end())  {
+  if (a->sinks().empty() ) {
     std::cerr << "\nERROR LOGGED WITHOUT DESTINATION!\n";
     std::cerr << "Attaching destination \"cerr\" to ELadministrator by default\n"
               << std::endl;
-    a->attach(ELoutput(std::cerr));
+    a->attach( "cerr", std::make_unique<ELostreamOutput>(std::cerr) );
   }
-  std::list<std::shared_ptr<ELdestination> >::iterator d;
-  for ( d = a->sinks().begin();  d != a->sinks().end();  ++d )
-    if (  (*d)->log( msg )  )
-      msg.setReactedTo (true );
 
+  for ( auto & d : a->sinks() ) {
+    d.second->log( msg );
+  }
 
   if ( msg.xid().severity.getLevel() >= a->abortThreshold().getLevel()
                        &&

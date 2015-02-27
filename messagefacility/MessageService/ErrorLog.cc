@@ -38,7 +38,7 @@
 #include "messagefacility/MessageService/ErrorLog.h"
 #include "messagefacility/MessageService/ELadministrator.h"
 #include "messagefacility/MessageService/ELdestination.h"
-#include "messagefacility/MessageService/ELoutput.h"
+#include "messagefacility/MessageService/ELostreamOutput.h"
 #include "messagefacility/MessageService/ELrecv.h"
 #include "messagefacility/MessageService/ELcontextSupplier.h"
 
@@ -159,9 +159,7 @@ void ErrorLog::setSubroutine( const ELstring & subName )  {
 
 void ErrorLog::switchChannel( const ELstring & channelName ) {
 
-  std::list<std::shared_ptr<ELdestination> >::iterator d;
-  for ( d = a->sinks().begin();  d != a->sinks().end();  ++d )
-    (*d) -> switchChannel( channelName );
+  for ( const auto & d : a->sinks() ) d.second->switchChannel( channelName );
 
 }
 
@@ -228,16 +226,16 @@ ErrorLog & ErrorLog::operator()( mf::ErrorObj & msg )  {
 
   // -----  send the message to each destination:
   //
-  if (a->sinks().begin() == a->sinks().end())  {
+  if ( a->sinks().empty() ) {
     std::cerr << "\nERROR LOGGED WITHOUT DESTINATION!\n";
     std::cerr << "Attaching destination \"cerr\" to ELadministrator by default\n"
               << std::endl;
-    a->attach(ELoutput(std::cerr));
+    a->attach( "cerr", std::make_unique<ELostreamOutput>(std::cerr) );
   }
-  std::list<std::shared_ptr<ELdestination> >::iterator d;
-  for ( d = a->sinks().begin();  d != a->sinks().end();  ++d )
-    if (  (*d)->log( msg )  )
-      msg.setReactedTo ( true );
+
+  for ( const auto & d : a->sinks() ) {
+    d.second->log( msg );
+  }
 
   possiblyAbOrEx ( msg.xid().severity.getLevel(),
                    a->abortThreshold().getLevel(),
