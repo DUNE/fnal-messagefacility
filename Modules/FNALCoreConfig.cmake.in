@@ -1,0 +1,35 @@
+# - FNALCore CMake package configuration file
+
+# - API/ABI details
+set(FNALCore_VERSION @FNALCore_VERSION@)
+set(FNALCore_CXX_COMPILER_ID "@CMAKE_CXX_COMPILER_ID@")
+set(FNALCore_CXX_COMPILER_VERSION "@CMAKE_CXX_COMPILER_VERSION@")
+set(FNALCore_CXX_STDLIB_ID "@CXX_STDLIB_VENDOR@")
+set(FNALCore_CXX_STDLIB_VERSION "@CXX_STDLIB_VERSION@")
+set(FNALCore_CXX_FLAGS "@CMAKE_CXX_FLAGS@")
+
+@PACKAGE_INIT@
+
+set_and_check(FNALCore_INCLUDE_DIRS "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/FNALCore")
+
+# - Third party details
+# Done here because if these use imported targets, we should check
+# them before we import our targets
+set(FNALCore_BOOST_VERSION "@Boost_MAJOR_VERSION@.@Boost_MINOR_VERSION@.@Boost_SUBMINOR_VERSION@")
+set(FNALCore_BOOST_COMPONENTS "@FNALCore_BOOST_COMPONENTS@")
+
+if(Boost_FOUND)
+  # Check that at least the versions match
+  if(NOT (FNALCore_BOOST_VERSION VERSION_EQUAL "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION}"))
+    message(FATAL_ERROR "FNALCore: Boost found, but version \"${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION}\" does not match version required by FNALCore (${FNALCore_BOOST_VERSION})")
+  endif()
+endif()
+
+# - Refind Boost (though note that as FindBoost doesn't use imported
+# targets, these are already coded into the targets in the exports
+# file coded below. That can be changed later though.
+find_package(Boost ${FNALCore_BOOST_VERSION} EXACT REQUIRED ${FNALCore_BOOST_COMPONENTS})
+
+# - Import targets
+include("${CMAKE_CURRENT_LIST_DIR}/FNALCoreExports.cmake")
+

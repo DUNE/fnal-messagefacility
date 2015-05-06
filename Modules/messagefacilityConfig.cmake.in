@@ -1,0 +1,22 @@
+# - messagefacility CMake package configuration file, aliasing to FNALCore
+
+# Finding FNALCore will handle everything, then we provide workarounds
+# It will always be one level down from this file, and we know the version
+find_package(FNALCore @FNALCore_VERSION@ EXACT REQUIRED NO_DEFAULT_PATH
+  PATHS "${CMAKE_CURRENT_LIST_DIR}/..")
+
+# Can't alias an imported target, so use variables
+set(messagefacility_LIBRARIES FNALCore::FNALCore)
+get_property(messagefacility_INCLUDE_DIRS
+  TARGET FNALCore::FNALCore
+  PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+  )
+
+# - API/ABI details
+set(messagefacility_VERSION @messagefacility_VERSION@)
+set(messagefacility_CXX_COMPILER_ID "@CMAKE_CXX_COMPILER_ID@")
+set(messagefacility_CXX_COMPILER_VERSION "@CMAKE_CXX_COMPILER_VERSION@")
+set(messagefacility_CXX_STDLIB_ID "@CXX_STDLIB_VENDOR@")
+set(messagefacility_CXX_STDLIB_VERSION "@CXX_STDLIB_VERSION@")
+set(messagefacility_CXX_FLAGS "@CMAKE_CXX_FLAGS@")
+

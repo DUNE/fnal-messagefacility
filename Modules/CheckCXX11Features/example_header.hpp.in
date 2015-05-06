@@ -1,0 +1,57 @@
+// - Simple demonstration of creating a support header from
+// CheckCXX11Features variables. This uses cmakedefine to set preprocessor
+// symbols, but other techniques can be used.
+//
+#ifndef EXAMPLE_HEADER_HPP_HH
+#define EXAMPLE_HEADER_HPP_HH
+
+#cmakedefine HAS_CXX11_ALGORITHM_ALL_OF
+#cmakedefine HAS_CXX11_ALGORITHM_ANY_OF
+#cmakedefine HAS_CXX11_ALGORITHM_COPY_N
+#cmakedefine HAS_CXX11_ALGORITHM_FIND_IF_NOT
+#cmakedefine HAS_CXX11_ALGORITHM_IS_PARTITIONED
+#cmakedefine HAS_CXX11_ALGORITHM_IS_SORTED
+#cmakedefine HAS_CXX11_ALGORITHM_MIN_MAX
+#cmakedefine HAS_CXX11_ALGORITHM_NONE_OF
+#cmakedefine HAS_CXX11_ALGORITHM_PARTITION_POINT
+#cmakedefine HAS_CXX11_ALGORITHM_SHUFFLE
+#cmakedefine HAS_CXX11_ARRAY
+#cmakedefine HAS_CXX11_AUTO
+#cmakedefine HAS_CXX11_AUTO_RET_TYPE
+#cmakedefine HAS_CXX11_CLASS_OVERRIDE
+#cmakedefine HAS_CXX11_CMATH_C99
+#cmakedefine HAS_CXX11_CMATH_FPCLASSIFY
+#cmakedefine HAS_CXX11_CONSTEXPR
+#cmakedefine HAS_CXX11_CSTDINT_H
+#cmakedefine HAS_CXX11_DECLTYPE
+#cmakedefine HAS_CXX11_DEFAULT_TEMPLATE_ARGUMENTS
+#cmakedefine HAS_CXX11_EXPLICIT_CONVERSION_OPERATORS
+#cmakedefine HAS_CXX11_FUNC
+#cmakedefine HAS_CXX11_FUNCTIONAL_BIND
+#cmakedefine HAS_CXX11_FUNCTIONAL_FUNCTION
+#cmakedefine HAS_CXX11_FUNCTIONAL_HASH
+#cmakedefine HAS_CXX11_FUNCTIONAL_MEM_FN
+#cmakedefine HAS_CXX11_FUNCTIONAL_REF
+#cmakedefine HAS_CXX11_INITIALIZER_LIST
+#cmakedefine HAS_CXX11_LAMBDA
+#cmakedefine HAS_CXX11_LIB_REGEX
+#cmakedefine HAS_CXX11_LONG_LONG
+#cmakedefine HAS_CXX11_MEMORY_SHARED_PTR
+#cmakedefine HAS_CXX11_MEMORY_UNIQUE_PTR
+#cmakedefine HAS_CXX11_NOEXCEPT
+#cmakedefine HAS_CXX11_NULLPTR
+#cmakedefine HAS_CXX11_NUMERIC_IOTA
+#cmakedefine HAS_CXX11_RANDOM
+#cmakedefine HAS_CXX11_RANGE_BASED_FOR
+#cmakedefine HAS_CXX11_RVALUE_REFERENCES
+#cmakedefine HAS_CXX11_SIZEOF_MEMBER
+#cmakedefine HAS_CXX11_STATIC_ASSERT
+#cmakedefine HAS_CXX11_STRING_NUMERIC_CONVERSIONS
+#cmakedefine HAS_CXX11_SYSTEM_ERROR
+#cmakedefine HAS_CXX11_TUPLE
+#cmakedefine HAS_CXX11_TYPE_TRAITS
+#cmakedefine HAS_CXX11_UTILITY_DECLVAL
+#cmakedefine HAS_CXX11_VARIADIC_TEMPLATES
+
+#endif // EXAMPLE_HEADER.HPP_HH
+
