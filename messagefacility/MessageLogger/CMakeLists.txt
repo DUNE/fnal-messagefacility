@@ -1,6 +1,3 @@
-if (ALT_CMAKE) 
-include(altCMakeLists.cmake)
-else()
 #
 #  MessageLogger/CMakeLists.txt
 #  -------------------------------------------------------------------
@@ -24,4 +21,3 @@ cet_make_library( LIBRARY_NAME MF_MessageLogger
 # install files
 install_headers()
 install_source()
-endif()

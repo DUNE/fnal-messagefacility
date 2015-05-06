@@ -1,6 +1,3 @@
-if (ALT_CMAKE) 
-include(altCMakeLists.cmake)
-else()
 #
 #  Utilities/CMakeLists.txt
 #  -------------------------------------------------------------------
@@ -20,4 +17,3 @@ cet_make( LIBRARY_NAME MF_Utilities
 # install files
 install_headers()
 install_source()
-endif()

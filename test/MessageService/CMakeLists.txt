@@ -1,6 +1,3 @@
-if (ALT_CMAKE) 
-include(altCMakeLists.cmake)
-else()
 # ======================================================================
 #
 # Testing script
@@ -23,4 +20,3 @@ foreach ( filename ${testConfigFiles} )
     )
 
 endforeach()
-endif()
