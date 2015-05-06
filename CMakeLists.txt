@@ -1,3 +1,6 @@
+if (ALT_CMAKE) 
+include(altCMakeLists.cmake)
+else()
 #
 #  CMakeLists.txt
 #  -------------------------------------------------------------------
@@ -54,3 +57,4 @@ add_subdirectory(ups)
 # This step enables building the package tarball
 # packaging utility
 include(UseCPack)
+endif()

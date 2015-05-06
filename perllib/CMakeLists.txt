@@ -1,3 +1,5 @@
-
+if (ALT_CMAKE) 
+include(altCMakeLists.cmake)
+else()
 add_subdirectory(CetSkelPlugins)
-
+endif()

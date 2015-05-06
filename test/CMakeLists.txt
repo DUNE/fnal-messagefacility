@@ -1,3 +1,6 @@
+if (ALT_CMAKE) 
+include(altCMakeLists.cmake)
+else()
 # ======================================================================
 #
 # Testing
@@ -12,3 +15,4 @@ cet_test_env("FHICL_FILE_PATH=.")
 add_subdirectory(Utilities)
 add_subdirectory(Integration)
 add_subdirectory(MessageService)
+endif()

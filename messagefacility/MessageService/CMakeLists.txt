@@ -1,3 +1,6 @@
+if (ALT_CMAKE) 
+include(altCMakeLists.cmake)
+else()
 #
 #  MessageService/CMakeLists.txt
 #  -------------------------------------------------------------------
@@ -17,3 +20,4 @@ add_subdirectory(plugins)
 
 install_headers()
 install_source()
+endif()
